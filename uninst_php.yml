@@ -1,0 +1,12 @@
+---
+- hosts: webservers
+  tasks:
+    - name: php uninstall
+      package:
+        name: php
+        state: absent
+
+    - name: kustuta phpinfo.php fail
+      file:
+        path: /var/www/html/phpinfo.php
+        state: absent
