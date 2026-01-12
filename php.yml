@@ -1,18 +1,31 @@
 ---
 - hosts: webservers
   tasks:
-    - name: installime php
+    - name: Install php (Debian)
       package:
         name: php
-        state: latest
+        state: present
         update_cache: yes
-    - name: fail phpinfo.php kataloogi /var/www/html/
+      when: ansible_os_family == "Debian"
+    
+    - name: Install php (RedHat)
+      package:
+        name: 
+          - php
+          - php-fpm
+        state: present
+      when: ansible_os_family == "RedHat"
+    
+    - name: Create phpinfo.php
       copy:
         dest: /var/www/html/phpinfo.php
-        owner: user
-        group: user
         mode: 0644
         content: |
           <?php
           phpinfo();
           ?>
+    
+    - name: Restart web server
+      service:
+        name: "{{ 'apache2' if ansible_os_family == 'Debian' else 'httpd' }}"
+        state: restarted

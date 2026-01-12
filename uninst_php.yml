@@ -6,7 +6,18 @@
         name: php
         state: absent
 
+    - name: php-fpm uninstall
+      package:
+        name: php-fpm
+        state: absent
+      ignore_errors: yes
+
     - name: kustuta phpinfo.php fail
       file:
         path: /var/www/html/phpinfo.php
         state: absent
+
+    - name: Restart web server
+      service:
+        name: "{{ 'apache2' if ansible_os_family == 'Debian' else 'httpd' }}"
+        state: restarted
