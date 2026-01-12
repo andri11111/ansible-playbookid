@@ -1,0 +1,18 @@
+---
+- hosts: webservers
+  tasks:
+    - name: installime php
+      package:
+        name: php
+        state: latest
+        update_cache: yes
+    - name: fail phpinfo.php kataloogi /var/www/html/
+      copy:
+        dest: /var/www/html/phpinfo.php
+        owner: user
+        group: user
+        mode: 0644
+        content: |
+          <?php
+          phpinfo();
+          ?>
