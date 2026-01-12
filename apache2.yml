@@ -1,0 +1,109 @@
+---
+- hosts: webservers
+  tasks:
+    - name: install apache on RedHat systems
+      package:
+        name: httpd
+        state: latest
+      when: ansible_os_family == "RedHat"
+
+    - name: install apache on Debian systems
+      package:
+        name: apache2
+        state: latest
+      when: ansible_os_family == "Debian"
+
+    - name: Open HTTP port on firewall CentOS
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Kodukataloogi õigused
+      file:
+        path: /home/user
+        mode: '0711'
+
+    - name: Luba SELinuxil teenindada kodukatalooge
+      seboolean:
+        name: httpd_enable_homedirs
+        state: yes
+        persistent: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Loome public_html kataloog user_ile
+      file:
+        path: /home/user/public_html
+        owner: user
+        group: user
+        mode: 0755
+        state: directory
+
+    - name: Lubame userdir mod APACHE2
+      apache2_module:
+        name: userdir
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Lubame userdir mod HTTPD
+      replace:
+        path: /etc/httpd/conf.d/userdir.conf
+        regexp: '^\s*UserDir disabled'
+        replace: '# UserDir disabled'
+      when: ansible_os_family == "RedHat"
+
+    - name: Aktiveerime UserDir public_html
+      replace:
+        path: /etc/httpd/conf.d/userdir.conf
+        regexp: '^\s*#UserDir public_html'
+        replace: '    UserDir public_html'
+      when: ansible_os_family == "RedHat"
+
+    - name: Hangi hostinimi
+      set_fact:
+        server_hostname: "{{ ansible_hostname }}"
+
+    - name: Hangi peamine IP-aadress
+      set_fact:
+        server_ip: "{{ ansible_default_ipv4.address }}"
+
+    - name: Apache2 serverile restart
+      service:
+        name: apache2
+        state: restarted
+      when: ansible_os_family == "Debian"
+
+    - name: httpd serverile restart
+      service:
+        name: httpd
+        state: restarted
+      when: ansible_os_family == "RedHat"
+
+    - name: Loo unikaalne index.html Apache vaikelehe asemel
+      copy:
+        dest: /var/www/html/index.html
+        content: |
+          <html>
+            <head><title>Tervitus!</title></head>
+            <body>
+              <h1>Tere tulemast!</h1>
+              <p>See leht kuulub serverile: {{ server_hostname }}</p>
+              <p>Serveri IP-aadress: {{ server_ip }}</p>
+            </body>
+          </html>
+
+    - name: Loo useri index.html fail
+      copy:
+        dest: /home/user/public_html/index.html
+        content: |
+          <html>
+            <head><title>Tervitus!</title></head>
+            <body>
+              <h1>Tere tulemast!</h1>
+              <p>See leht kuulub serverile: {{ server_hostname }}</p>
+              <p>Serveri IP-aadress: {{ server_ip }}</p>
+              <p> USERI Lehekylg</p>
+            </body>
+          </html>
