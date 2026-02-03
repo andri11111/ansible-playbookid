@@ -1,0 +1,25 @@
+---
+- name: Configure MySQL root user
+  hosts: serverklient1
+  
+  tasks:
+    - name: Create /root/.my.cnf file first
+      copy:
+        content: |
+          [client]
+          user=root
+          password=qwerty
+        dest: /root/.my.cnf
+        owner: root
+        group: root
+        mode: '0600'
+    
+    - name: Set MySQL root password with caching_sha2_password
+      shell: |
+        mysql --defaults-file=/root/.my.cnf -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'qwerty'; FLUSH PRIVILEGES;" || \
+        mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'qwerty'; FLUSH PRIVILEGES;"
+        
+    - name: Verify password authentication works
+      shell: mysql -u root -pqwerty -e "SELECT 1;" > /dev/null 2>&1
+      register: mysql_test
+      failed_when: mysql_test.rc != 0

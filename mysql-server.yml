@@ -1,0 +1,32 @@
+---
+- hosts: serverklient1
+  tasks:
+    - name: loome allalaadimiseks kataloogi
+      file:
+        path=/root/allalaadimised
+        owner=root
+        group=root
+        mode=0755
+        state=directory
+
+    - name: mysql apt paketi laadimine wget-iga
+      shell: |
+        wget -O /root/allalaadimised/mysql-apt-config_0.8.36-1_all.deb https://dev.mysql.com/get/mysql-apt-config_0.8.36-1_all.deb
+
+    - name: paigalda gnupg
+      apt:
+        name: gnupg
+        state: present
+        update_cache: yes
+
+    - name: mysql repo
+      apt:
+        deb: /root/allalaadimised/mysql-apt-config_0.8.36-1_all.deb
+
+    - name: apt update
+      apt:
+        update_cache: yes
+    - name: mysql server paigaldamine
+      apt:
+        name: mysql-server
+        state: present
