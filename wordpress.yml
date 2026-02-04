@@ -1,0 +1,92 @@
+---
+- name: WordPressi paigaldamine ja seadistamine
+  hosts: serverklient1
+  become: yes
+
+  tasks:
+    - name: Paigalda python3-pymysql
+      apt:
+        name: python3-pymysql
+        state: present
+        update_cache: yes
+
+    - name: Loo WordPressi andmebaas
+      mysql_db:
+        name: wpdatabase
+        state: present
+        login_user: root
+        login_password: qwerty
+
+    - name: Loo wpuser MySQL shelliga
+      shell: |
+        mysql -u root -pqwerty -e "
+        CREATE USER IF NOT EXISTS 'wpuser'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'qwerty12';
+        GRANT ALL PRIVILEGES ON wpdatabase.* TO 'wpuser'@'localhost';
+        FLUSH PRIVILEGES;"
+
+    - name: Laeme alla WordPressi
+      get_url:
+        url: https://wordpress.org/latest.tar.gz
+        dest: /tmp/wordpress.tar.gz
+        mode: '0644'
+
+    - name: Lahtipaki WordPress
+      unarchive:
+        src: /tmp/wordpress.tar.gz
+        dest: /var/www/html
+        remote_src: yes
+        creates: /var/www/html/wordpress
+
+    - name: Kopeeri wp-config-sample.php wp-config.php
+      copy:
+        src: /var/www/html/wordpress/wp-config-sample.php
+        dest: /var/www/html/wordpress/wp-config.php
+        remote_src: yes
+
+    - name: Muuda wp-config.php - andmebaasi nimi
+      lineinfile:
+        path: /var/www/html/wordpress/wp-config.php
+        regexp: "define\\(\\s*'DB_NAME'.*\\)"
+        line: "define('DB_NAME', 'wpdatabase');"
+
+    - name: Muuda wp-config.php - kasutaja
+      lineinfile:
+        path: /var/www/html/wordpress/wp-config.php
+        regexp: "define\\(\\s*'DB_USER'.*\\)"
+        line: "define('DB_USER', 'wpuser');"
+
+    - name: Muuda wp-config.php - parool
+      lineinfile:
+        path: /var/www/html/wordpress/wp-config.php
+        regexp: "define\\(\\s*'DB_PASSWORD'.*\\)"
+        line: "define('DB_PASSWORD', 'qwerty12');"
+
+    - name: Paigalda PHP MySQL laiend
+      apt:
+        name: php-mysql
+        state: present
+        update_cache: yes
+
+    - name: Taaskäivitame Apache teenus
+      service:
+        name: apache2
+        state: restarted
+
+    - name: Laeme alla wp-cli
+      get_url:
+        url: https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+        dest: /usr/local/bin/wp
+        mode: '0755'
+
+    - name: WordPressi automaatne paigaldus
+      command: >
+        wp core install
+        --url="http://{{ ansible_default_ipv4.address }}/wordpress"
+        --title="admin wordpressi sait"
+        --admin_user="admin"
+        --admin_password="qwerty"
+        --admin_email="admin@example.com"
+        --skip-email
+        --allow-root
+      args:
+        chdir: /var/www/html/wordpress
